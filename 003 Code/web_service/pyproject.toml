@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "capstone"
+version = "0.1.0"
+description = ""
+authors = ["Lee YongBeen <yongkong9876@gmail.com>"]
+readme = "README.md"
+package-mode = false
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = {extras = ["standard"], version = "^0.114"}
+# SQLAlchemy = "^2.0"
+Jinja2 = "^3.1"
+aiofiles = "^24"
+SQLAlchemy = "^2.0.0"
+psycopg2-binary = "^2.9.5"
+python-dotenv = "^1.0.0"
+passlib = {extras = ["bcrypt"], version = "^1.7.4"}
+pyjwt = "^2.9.0"
+bcrypt = "4.0.1"
+openai = "^1.52.1"
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

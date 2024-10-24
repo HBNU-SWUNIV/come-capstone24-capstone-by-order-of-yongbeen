@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>문서 편집기</title>
+		<script src="/static/main.js" defer></script>
+		<style>
+			body {
+				margin: 0 400px;
+				font-family: Arial, sans-serif;
+			}
+
+			.editor-container {
+				display: flex;
+				gap: 20px;
+				margin-top: 20px;
+			}
+
+			.editor,
+			.inference {
+				flex: 1;
+				display: flex;
+				flex-direction: column;
+			}
+
+			.result-box {
+				border: 2px solid #ccc;
+				padding: 15px;
+				margin-top: 10px;
+				background-color: #f9f9f9;
+				border-radius: 5px;
+				font-size: 16px;
+				line-height: 1.5;
+			}
+
+			.result-box p {
+				margin: 0;
+				padding: 5px 0;
+				color: #333;
+			}
+
+			#title {
+				width: 100%;
+				margin-bottom: 10px;
+				padding: 8px;
+				font-size: 16px;
+				box-sizing: border-box;
+			}
+
+			#content {
+				flex: 1;
+				height: 100%;
+				width: 100%;
+				min-height: 400px;
+				padding: 10px;
+				font-size: 16px;
+				box-sizing: border-box;
+				overflow-y: auto;
+				border: 1px solid #ccc;
+				margin: 0;
+				resize: none;
+			}
+
+			#inference-result {
+				flex: 1;
+				height: 100%;
+				width: 100%;
+				min-height: 400px;
+				padding: 10px;
+				font-size: 16px;
+				box-sizing: border-box;
+				overflow-y: auto;
+				border: 1px solid #ccc;
+				margin: 0;
+				white-space: pre-wrap;
+				word-wrap: break-word;
+			}
+
+			#model-result p {
+				font-weight: bold;
+			}
+
+			.button-group {
+				margin-top: 10px;
+			}
+
+			.button-group button {
+				margin-right: 5px;
+				padding: 10px 15px;
+				font-size: 16px;
+			}
+
+			@media (max-width: 800px) {
+				.editor-container {
+					flex-direction: column;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<h1>한국어 문법 오류 교정 서비스</h1>
+		<div id="user-info"></div>
+		<button id="logout-btn" onclick="logout()">로그아웃</button>
+
+		<div class="editor-container">
+			<!-- 편집기 영역 -->
+			<div class="editor">
+				<h2>문서 편집기</h2>
+				<input type="hidden" id="document-id" />
+				<input type="text" id="title" placeholder="제목" />
+				<textarea id="content" placeholder="내용을 입력하세요..."></textarea>
+				<div class="button-group">
+					<button onclick="saveDocument()">저장</button>
+					<button onclick="clearForm()">새 문서</button>
+					<button onclick="deleteDocument()">삭제</button>
+					<button onclick="runInference()">문법 교정 및 평가</button>
+				</div>
+			</div>
+
+			<!-- 추론 결과 영역 -->
+			<div class="inference">
+				<h2>문법 교정 및 글 수준 평가 결과</h2>
+				<div id="inference-result"></div>
+				<div id="model-result" class="result-box">
+					<p id="writing-level">Level: 대기 중</p>
+					<p id="grammar-score">Score: 대기 중</p>
+				</div>
+			</div>
+		</div>
+
+		<div>
+			<h2>문서 목록</h2>
+			<ul id="document-list"></ul>
+		</div>
+	</body>
+</html>
