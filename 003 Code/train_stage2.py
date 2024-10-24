@@ -9,6 +9,7 @@ parser.add_argument('--token', type=str)
 parser.add_argument('--device', type=str, default='3')
 parser.add_argument('--output_dir', type=str)
 parser.add_argument('--ds_name', type=str)
+parser.add_argument('--model_ckpt', type=str)
 parser.add_argument('--is_bfloat16', type=bool)
 
 
@@ -22,13 +23,18 @@ batch_size = args.batch
 device = args.device
 output_dir = args.output_dir
 ds_name = args.ds_name
+model_ckpt = args.model_ckpt
 is_bfloat16 = args.is_bfloat16
+
+ckpt_name = os.listdir(model_ckpt)[0]
+model_ckpt = os.path.join(model_ckpt, ckpt_name)
+
 
 os.environ['CUDA_VISIBLE_DEVICES'] = device
 
 from transformers import AutoModelForCausalLM, AutoTokenizer, Trainer, TrainingArguments
 from datasets import Dataset, load_dataset
-from peft import LoraConfig, get_peft_model, TaskType
+from peft import LoraConfig, get_peft_model, TaskType, PeftModel
 import torch
 import pandas as pd
 import random
@@ -56,18 +62,8 @@ You are a helpful AI assistant tasked with correcting grammar errors and providi
 
 dataset = load_dataset('emotion-trash/gec_datasets', ds_name, split='train', token=token)
 
-peft_config = LoraConfig(
-            task_type=TaskType.CAUSAL_LM,
-            target_modules=["q_proj","v_proj","k_proj","o_proj","gate_proj","down_proj","up_proj"],
-            r=128,
-            lora_alpha=256,
-            lora_dropout=0.05,
-            modules_to_save=["embed_tokens","lm_head"]
-            )
-
-
 model = AutoModelForCausalLM.from_pretrained('MLP-KTLim/llama-3.1-Korean-Bllossom-8B', torch_dtype=torch.bfloat16)
-model = get_peft_model(model, peft_config)
+model = PeftModel.from_pretrained(model, model_ckpt, is_trainable=True)
 
 if is_bfloat16:
     for param in model.parameters():

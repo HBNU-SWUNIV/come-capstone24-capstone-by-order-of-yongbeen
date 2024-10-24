@@ -1,47 +1,70 @@
 import os
-os.environ['TOKENIZERS_PARALLELISM'] = 'false'
-os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
-# os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-
-from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
-from peft import LoraConfig, TaskType, PeftModel
-import torch
-import pandas as pd
-from datasets import Dataset, concatenate_datasets, load_dataset, DatasetDict
-from tqdm import tqdm
-import pickle
 import argparse
-from config import *
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--model_path', type=str, default='capstonedesignwithlyb/GEC_L1L2_30ep')
-parser.add_argument('--data_path', type=str, default='capstonedesignwithlyb/sample_l2')
-parser.add_argument('--save_path', type=str, default='./')
+parser.add_argument('--base_model_name', type=str, default='capstonedesignwithlyb/bllossom3.1_ga_v3')
+
+parser.add_argument('--task', type=str)
+parser.add_argument('--output_dir', type=str)
+parser.add_argument('--model_ckpt', type=str)
+parser.add_argument('--token', type=str)
+parser.add_argument('--device', type=str, default='0')
 
 args = parser.parse_args()
 
-model_path = args.model_path
-output_path = args.save_path
-data_path = args.data_path
+# ag, ga, awe, mul, sentence_gec, sentence_essay_gec
+task = args.task
+model_id = args.base_model_name
+token = args.token
+output_dir = args.output_dir
+device = args.device
+model_ckpt = args.model_ckpt
 
-# l1, l2, l12
-dataset = load_dataset(data_path, split='train')
+os.environ['CUDA_VISIBLE_DEVICES'] = device
 
-print(f"{model_path}model predict")
+PROMPT = '''당신은 문법 오류를 수정하고 자동 글쓰기 평가를 제공하는 유용한 AI 어시스턴트입니다. 모든 답변은 정확하고 명료해야 합니다.
+You are a helpful AI assistant tasked with correcting grammar errors and providing automated writing assessments. All responses must be accurate and clear.'''
 
-base_model_path = 'capstonedesignwithlyb/base_LLM'
-model = AutoModelForCausalLM.from_pretrained(base_model_path, torch_dtype=torch.bfloat16, quantization_config=quantization_config)
-model = PeftModel.from_pretrained(model_path)
+from transformers import AutoModelForCausalLM, AutoTokenizer, Trainer, TrainingArguments
+from datasets import Dataset, load_dataset
+from peft import LoraConfig, get_peft_model, TaskType, PeftModel
+import torch
+import pandas as pd
+import random
+import math
+import wandb
+from tqdm import tqdm
 
-tokenizer = AutoTokenizer.from_pretrained(model_path)
-tokenizer.pad_token_id = tokenizer.eos_token_id
-tokenizer.padding_side = 'right'
+model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype=torch.bfloat16)
+model = PeftModel.from_pretrained(model, model_ckpt, is_trainable=False)
+tokenizer = AutoTokenizer.from_pretrained(model_id)
+
+ds = load_dataset('emotion-trash/gec_datasets', task, split='test')
 
 result = []
-result = model_predict(model, tokenizer, dataset)
 
-with open(f'{output_path}/output.txt', 'w') as file:
-    for line in result:
-        file.write(line + '\n') 
+model.to('cuda')
 
-print("Data written to file.")
+for sample in tqdm(ds, total=len(ds)):
+    input_text = sample['input']
+    instruction = sample['instruction']
+
+    messages = [
+        {"role": "system", "content": f"{PROMPT}"},
+        {"role": "user", "content": f"{instruction}\n{input_text}"}
+    ]   
+
+    tokenized_input = tokenizer.apply_chat_template(messages, tokenize=True, add_generation_prompt=True, return_tensors='pt')
+    tokenized_input = tokenized_input.to('cuda')
+
+    output = model.generate(tokenized_input, max_length=8192, eos_token_id=tokenizer.eos_token_id)
+    output_text = tokenizer.decode(output[0][len(tokenized_input[0]):], skip_special_tokens=True)
+    print(output_text)
+
+    result.append(output_text)
+
+import pickle
+
+
+with open(f'{output_dir}.pkl', 'wb') as f:
+    pickle.dump(result, f)
